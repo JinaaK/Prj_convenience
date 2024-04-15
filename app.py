@@ -8,14 +8,19 @@ from folium.plugins import MarkerCluster
 from shapely.geometry import Polygon
 from shapely import wkt
 import matplotlib.pyplot as plt
+import altair as alt
+import plotly.express as px
 
 
 def load_streamlit_data():
     streamlit_df = pd.read_csv("./data/streamlit_df.csv")
+    streamlit_df['점포당_매출액'] = (streamlit_df['당월_매출_금액']/streamlit_df['유사_업종_점포_수']).round()
+    streamlit_df['기준_년분기'] = streamlit_df['기준_년'].astype(str) + '년' + streamlit_df['기준_분기'].astype(str) + '분기'
     return streamlit_df 
 
 def load_quarter_data():
     quarter_df = pd.read_csv("./data/final_merged_update_store_age_df.csv")
+    quarter_df['시간대별_점포당_매출액'] = (quarter_df['시간대_매출금액']/quarter_df['유사_업종_점포_수']).round()
     return quarter_df 
 
 def main_page():
@@ -64,28 +69,34 @@ def commercial_page(streamlit_df):
 
     with col2:
         option = st.selectbox(
-        '원하는 정보를 선택하세요',
-        ('유동인구', '상주인구', '매출', '점포수'))
+            '원하는 정보를 선택하세요',
+            options=['유동인구', '상주인구', '매출', '점포수'],
+            help= "매출 = 해당 상권 매출 금액 / 점포수"
+        )
 
         if option == '유동인구':
             # 선택된 열의 데이터를 출력
-            st.write(streamlit_df[['상권_코드_명', '행정동_코드_명', '총_유동인구_수']].
-                        sort_values(by='총_유동인구_수', ascending=False).reset_index(drop=True), width=800)
+            st.write(streamlit_df[['상권_코드_명', '행정동_코드_명', '총_유동인구_수']]
+                        .sort_values(by='총_유동인구_수', ascending=False)
+                        .reset_index(drop=True), width=800)
             
         if option == '상주인구':
             # 선택된 열의 데이터를 출력
-            st.write(streamlit_df[['상권_코드_명', '행정동_코드_명', '총_상주인구_수']].
-                        sort_values(by='총_상주인구_수', ascending=False).reset_index(drop=True), width=800)
+            st.write(streamlit_df[['상권_코드_명', '행정동_코드_명', '총_상주인구_수']]
+                        .sort_values(by='총_상주인구_수', ascending=False)
+                        .reset_index(drop=True), width=800)
 
         if option == '매출':
             # 선택된 열의 데이터를 출력
-            st.dataframe(streamlit_df[['상권_코드_명', '행정동_코드_명', '당월_매출_금액']].
-                        sort_values(by='당월_매출_금액', ascending=False).reset_index(drop=True), width=800)
+            st.dataframe(streamlit_df[['상권_코드_명', '행정동_코드_명', '점포당_매출액']]
+                        .sort_values(by='점포당_매출액', ascending=False)
+                        .reset_index(drop=True), width=800)
             
         if option == '점포수':
             # 선택된 열의 데이터를 출력
-            st.dataframe(streamlit_df[['상권_코드_명', '행정동_코드_명', '영역_면적', '유사_업종_점포_수']].
-                        sort_values(by='유사_업종_점포_수', ascending=False).reset_index(drop=True), width=800)
+            st.dataframe(streamlit_df[['상권_코드_명', '행정동_코드_명', '영역_면적', '유사_업종_점포_수']]
+                        .sort_values(by='유사_업종_점포_수', ascending=False)
+                        .reset_index(drop=True), width=800)
             
 def AnalysisbyCommercialArea_page(streamlit_df, selected_TRDAR_CD_N, quarter_df):
 
@@ -97,7 +108,7 @@ def AnalysisbyCommercialArea_page(streamlit_df, selected_TRDAR_CD_N, quarter_df)
 
     if not streamlit_df_3[streamlit_df_3['상권_코드_명'] == selected_TRDAR_CD_N].empty:
         # meteric 값
-        formatted_sales = streamlit_df_3[streamlit_df_3['상권_코드_명'] == selected_TRDAR_CD_N]['당월_매출_금액'].iloc[0]
+        formatted_sales = streamlit_df_3[streamlit_df_3['상권_코드_명'] == selected_TRDAR_CD_N]['점포당_매출액'].iloc[0]
         count_store = streamlit_df_3[streamlit_df_3['상권_코드_명'] == selected_TRDAR_CD_N]['유사_업종_점포_수'].iloc[0]
         floating_population = streamlit_df_3[streamlit_df_3['상권_코드_명'] == selected_TRDAR_CD_N]['총_유동인구_수'].iloc[0]
 
@@ -105,35 +116,55 @@ def AnalysisbyCommercialArea_page(streamlit_df, selected_TRDAR_CD_N, quarter_df)
         streamlit_df_2 = streamlit_df.loc[(streamlit_df['기준_년'] == 2023) & (streamlit_df['기준_분기'] == 2), :]
 
         # 2분기와의 차이값 계산
-        formatted_sales_diff = formatted_sales - streamlit_df_2[streamlit_df_2['상권_코드_명'] == selected_TRDAR_CD_N]['당월_매출_금액'].iloc[0]
+        formatted_sales_diff = formatted_sales - streamlit_df_2[streamlit_df_2['상권_코드_명'] == selected_TRDAR_CD_N]['점포당_매출액'].iloc[0]
         count_store_diff = count_store - streamlit_df_2[streamlit_df_2['상권_코드_명'] == selected_TRDAR_CD_N]['유사_업종_점포_수'].iloc[0]
         floating_population_diff = floating_population - streamlit_df_2[streamlit_df_2['상권_코드_명'] == selected_TRDAR_CD_N]['총_유동인구_수'].iloc[0]
 
         # 상단 col
         col1, col2, col3 = st.columns(3)
-        col1.metric("매출액", f"{formatted_sales:,.0f}원", f"{formatted_sales_diff:,.0f}원")
-        col2.metric("점포수", f"{count_store:,.0f}개", f"{count_store_diff:,.0f}개")
-        col3.metric("유동인구", f"{floating_population:,.0f}명", f"{floating_population_diff:,.0f}명")
+        col1.metric("매출액", f"{formatted_sales:,.0f}원", f"{formatted_sales_diff:,.0f}원", help= "2023년 3분기 기준 해당 상권 매출 금액 / 점포수")
+        col2.metric("점포수", f"{count_store:,.0f}개", f"{count_store_diff:,.0f}개", help= "2023년 3분기 기준 해당 상권의 총 점포수입니다.")
+        col3.metric("유동인구", f"{floating_population:,.0f}명", f"{floating_population_diff:,.0f}명", help= "2023년 3분기 기준 해당 상권의 총 유동인구수입니다.")
 
         # 공백 추가
         st.empty()
 
         # 하단 col
-        col1, col2 = st.columns(2)
         selected_3 = quarter_df.loc[(quarter_df['기준_년'] == 2023) & 
                                     (quarter_df['기준_분기'] == 3) & 
                                     (quarter_df['상권_코드_명'] == selected_TRDAR_CD_N), :]
         
-        col1.write("<h6 style='text-align: center;'>시간대별 매출 금액</h6>", unsafe_allow_html=True)
-        col1.bar_chart(selected_3, x="시간대", y="시간대_매출금액")
+        selected = streamlit_df[streamlit_df['상권_코드_명'] == selected_TRDAR_CD_N]
 
-        col2.write("<h6 style='text-align: center;'>시간대별 유동인구</h6>", unsafe_allow_html=True)
-        col2.bar_chart(selected_3, x="시간대", y="시간대_유동인구_수")
+        tab1, tab2, tab3, tab4, tab5 = st.tabs(["📈 매출", "🚉 유동인구", "👨‍👨‍👧‍👦 상주인구", "🛒 집객시설", "🏬 점포수"])
+
+
+        # 분기별 매출 추이
+        tab1.subheader("분기별 매출 추이")
+        fig_quarterly_sales = px.line(selected, x='기준_년분기', y='당월_매출_금액')
+        fig_quarterly_sales.update_layout(xaxis=dict(tickangle=0), autosize=True, width=1200)
+        tab1.plotly_chart(fig_quarterly_sales)
+
+        # 시간대 매출
+        tab1.subheader("시간대 매출")
+        fig_time_sales = px.bar(selected_3, x='시간대', y='시간대별_점포당_매출액')
+        fig_time_sales.update_layout(xaxis=dict(tickangle=0), autosize=True, width=1200)
+        tab1.plotly_chart(fig_time_sales)
+
+        # demo
+        tab1.col1, tab1.col2 = st.columns(2)
+        tab1.col1.subheader("성별")
+        tab1.col2.subheader("연령별")
+
+        tab2.subheader("시간대 유동인구수")
+        tab2.bar_chart(selected_3, x="시간대", y="시간대_유동인구_수")
+
+
 
 
     else:
-            st.error("해당 상권의 3분기 데이터가 없습니다.", icon="🚨")
-            st.write("다른 상권을 선택해주세요")
+        st.error("해당 상권의 3분기 데이터가 없습니다.", icon="🚨")
+        st.write("다른 상권을 선택해주세요")
 
 def main():
 
@@ -152,15 +183,12 @@ def main():
 
     # 사이드바 메뉴
     with st.sidebar:
-        menu = option_menu("메뉴 선택", ['홈', '강남구 상권 분석', '상권별 분석', '매출 예측'],
-                   icons=['house', 'bi bi-clipboard2-data', 'bi bi-currency-dollar', 'bi bi-graph-up-arrow'], 
+        menu = option_menu("메뉴 선택", ['강남구 상권 분석', '상권별 분석', '매출 예측'],
+                   icons=['bi bi-clipboard2-data', 'bi bi-currency-dollar', 'bi bi-graph-up-arrow'], 
                    menu_icon="cast", 
                    default_index=0)        
         
-        if menu == "홈":
-            choice = "홈"
-
-        elif menu == "강남구 상권 분석":
+        if menu == "강남구 상권 분석":
             choice = "강남구 상권 분석"
 
         elif menu == "상권별 분석":
@@ -177,10 +205,7 @@ def main():
             choice = "상권별 분석"
 
     # 페이지 보이기
-    if choice == '홈':
-        main_page()
-    
-    elif choice == '강남구 상권 분석':
+    if choice == '강남구 상권 분석':
         commercial_page(streamlit_df)
 
     elif choice == '상권별 분석':
