@@ -11,24 +11,33 @@ import matplotlib.pyplot as plt
 import altair as alt
 import plotly.express as px
 
-
+# Streamlit 데이터 로드 함수
 def load_streamlit_data():
     streamlit_df = pd.read_csv("./data/streamlit_df.csv")
-    streamlit_df['점포당_매출액'] = (streamlit_df['당월_매출_금액']/streamlit_df['유사_업종_점포_수']).round()
+    streamlit_df['점포당_매출액'] = (streamlit_df['당월_매출_금액'] / streamlit_df['유사_업종_점포_수']).round()
     streamlit_df['기준_년분기'] = streamlit_df['기준_년'].astype(str) + '년' + streamlit_df['기준_분기'].astype(str) + '분기'
-    return streamlit_df 
+    streamlit_df['점포당_남성_매출_금액'] = streamlit_df['남성_매출_금액'] / streamlit_df['유사_업종_점포_수'].round()
+    streamlit_df['점포당_여성_매출_금액'] = streamlit_df['여성_매출_금액'] / streamlit_df['유사_업종_점포_수'].round()
+    # 요일 목록
+    weekdays = ['월요일', '화요일', '수요일', '목요일', '금요일', '토요일', '일요일']
 
+    # 요일별 매출액 계산
+    for day in weekdays:
+        col_name = f'점포당_{day}_매출액'
+        streamlit_df[col_name] = streamlit_df[f'{day}_매출_금액'] / streamlit_df['유사_업종_점포_수'].round()
+    return streamlit_df
+
+# 시간대별 데이터 로드 함수
 def load_quarter_data():
     quarter_df = pd.read_csv("./data/final_merged_update_store_age_df.csv")
-    quarter_df['시간대별_점포당_매출액'] = (quarter_df['시간대_매출금액']/quarter_df['유사_업종_점포_수']).round()
-    return quarter_df 
+    quarter_df['시간대별_점포당_매출액'] = (quarter_df['시간대_매출금액'] / quarter_df['유사_업종_점포_수']).round()
+    return quarter_df
 
-def main_page():
-    st.markdown("<h1 style='text-align: center;'>🏪 강남구 편의점 매출 예측 서비스</h1>", unsafe_allow_html=True)
-
+# 강남구 상권 분석 페이지 렌더링 함수
 def commercial_page(streamlit_df):
     st.markdown("<h2 style='text-align: center;'>강남구 상권 분석</h2>", unsafe_allow_html=True)
 
+    # 필요한 데이터만 추출
     streamlit_df = streamlit_df.loc[(streamlit_df['기준_년'] == 2023) & (streamlit_df['기준_분기'] == 3), :]
 
     col1, col2 = st.columns([1.5,1])
@@ -44,7 +53,6 @@ def commercial_page(streamlit_df):
                     f"매출금액: {row['당월_매출_금액']:,.0f}원<br>" \
                     f"유동인구: {row['총_유동인구_수']:,.0f}명<br>" \
                     f"총상주인구: {row['총_상주인구_수']:,.0f}명"
-
 
             folium.CircleMarker(                         # 원 표시
                 location=[row['위도'], row['경도']],      # 원 중심- 위도, 경도
@@ -66,7 +74,6 @@ def commercial_page(streamlit_df):
 
         st.caption('2023년 3분기 기준')
 
-
     with col2:
         option = st.selectbox(
             '원하는 정보를 선택하세요',
@@ -74,30 +81,21 @@ def commercial_page(streamlit_df):
             help= "매출 = 해당 상권 매출 금액 / 점포수"
         )
 
-        if option == '유동인구':
+        option_mapping = {
+            '유동인구': '총_유동인구_수',
+            '상주인구': '총_상주인구_수',
+            '매출': '점포당_매출액',
+            '점포수': '유사_업종_점포_수'
+        }
+
+        if option in option_mapping:
+            column_name = option_mapping[option]
             # 선택된 열의 데이터를 출력
-            st.write(streamlit_df[['상권_코드_명', '행정동_코드_명', '총_유동인구_수']]
-                        .sort_values(by='총_유동인구_수', ascending=False)
-                        .reset_index(drop=True), width=800)
-            
-        if option == '상주인구':
-            # 선택된 열의 데이터를 출력
-            st.write(streamlit_df[['상권_코드_명', '행정동_코드_명', '총_상주인구_수']]
-                        .sort_values(by='총_상주인구_수', ascending=False)
+            st.write(streamlit_df[['상권_코드_명', '행정동_코드_명', column_name]]
+                        .sort_values(by=column_name, ascending=False)
                         .reset_index(drop=True), width=800)
 
-        if option == '매출':
-            # 선택된 열의 데이터를 출력
-            st.dataframe(streamlit_df[['상권_코드_명', '행정동_코드_명', '점포당_매출액']]
-                        .sort_values(by='점포당_매출액', ascending=False)
-                        .reset_index(drop=True), width=800)
-            
-        if option == '점포수':
-            # 선택된 열의 데이터를 출력
-            st.dataframe(streamlit_df[['상권_코드_명', '행정동_코드_명', '영역_면적', '유사_업종_점포_수']]
-                        .sort_values(by='유사_업종_점포_수', ascending=False)
-                        .reset_index(drop=True), width=800)
-            
+# 상권별 분석 페이지 렌더링 함수
 def AnalysisbyCommercialArea_page(streamlit_df, selected_TRDAR_CD_N, quarter_df):
 
     st.markdown("<h2 style='text-align: center;'>상권별 분석</h2>", unsafe_allow_html=True)
@@ -105,8 +103,9 @@ def AnalysisbyCommercialArea_page(streamlit_df, selected_TRDAR_CD_N, quarter_df)
 
     # 3분기 데이터만 필터링
     streamlit_df_3 = streamlit_df.loc[(streamlit_df['기준_년'] == 2023) & (streamlit_df['기준_분기'] == 3), :]
+    selected_streamlit_df_3 = streamlit_df_3[streamlit_df_3['상권_코드_명'] == selected_TRDAR_CD_N]
 
-    if not streamlit_df_3[streamlit_df_3['상권_코드_명'] == selected_TRDAR_CD_N].empty:
+    if not selected_streamlit_df_3.empty:
         # meteric 값
         formatted_sales = streamlit_df_3[streamlit_df_3['상권_코드_명'] == selected_TRDAR_CD_N]['점포당_매출액'].iloc[0]
         count_store = streamlit_df_3[streamlit_df_3['상권_코드_명'] == selected_TRDAR_CD_N]['유사_업종_점포_수'].iloc[0]
@@ -136,41 +135,114 @@ def AnalysisbyCommercialArea_page(streamlit_df, selected_TRDAR_CD_N, quarter_df)
         
         selected = streamlit_df[streamlit_df['상권_코드_명'] == selected_TRDAR_CD_N]
 
+
         tab1, tab2, tab3, tab4, tab5 = st.tabs(["📈 매출", "🚉 유동인구", "👨‍👨‍👧‍👦 상주인구", "🛒 집객시설", "🏬 점포수"])
 
+        with tab1:
+            # 분기별 매출 추이
+            st.subheader("분기별 매출 추이")
+            fig_quarterly_sales = px.line(selected, x='기준_년분기', y='점포당_매출액')
+            fig_quarterly_sales.update_layout(xaxis=dict(tickangle=0), autosize=True, width=1200)
+            st.plotly_chart(fig_quarterly_sales)
 
-        # 분기별 매출 추이
-        tab1.subheader("분기별 매출 추이")
-        fig_quarterly_sales = px.line(selected, x='기준_년분기', y='당월_매출_금액')
-        fig_quarterly_sales.update_layout(xaxis=dict(tickangle=0), autosize=True, width=1200)
-        tab1.plotly_chart(fig_quarterly_sales)
+            # 시간대 및 요일별 매출
+            st.subheader("시간대 및 요일별 매출")
+            col1, col2 = st.columns(2)
 
-        # 시간대 매출
-        tab1.subheader("시간대 매출")
-        fig_time_sales = px.bar(selected_3, x='시간대', y='시간대별_점포당_매출액')
-        fig_time_sales.update_layout(xaxis=dict(tickangle=0), autosize=True, width=1200)
-        tab1.plotly_chart(fig_time_sales)
+            with col1:
+                fig_time_sales = px.bar(selected_3, x='시간대', y='시간대별_점포당_매출액', title='시간대별 매출')
+                fig_time_sales.update_layout(xaxis=dict(tickangle=0), autosize=True)
+                st.plotly_chart(fig_time_sales)
 
-        # demo
-        tab1.col1, tab1.col2 = st.columns(2)
-        tab1.col1.subheader("성별")
-        tab1.col2.subheader("연령별")
+            with col2:
+                week_data = selected_streamlit_df_3[['상권_코드_명', 
+                                                    '점포당_월요일_매출액', 
+                                                    '점포당_화요일_매출액', 
+                                                    '점포당_수요일_매출액', 
+                                                    '점포당_목요일_매출액', 
+                                                    '점포당_금요일_매출액',
+                                                    '점포당_토요일_매출액',
+                                                    '점포당_일요일_매출액']]
+                            
+                # '성별' 열 추가 및 데이터 재구성
+                week_data = pd.melt(week_data, 
+                                    id_vars=['상권_코드_명'], 
+                                    value_vars=['점포당_월요일_매출액', 
+                                                '점포당_화요일_매출액', 
+                                                '점포당_수요일_매출액', 
+                                                '점포당_목요일_매출액', 
+                                                '점포당_금요일_매출액',
+                                                '점포당_토요일_매출액',
+                                                '점포당_일요일_매출액'], 
+                                    var_name='요일', 
+                                    value_name='매출_금액')
+                fig_week_sales = px.bar(week_data, x='요일', y='매출_금액', title='요일별 매출')
+                fig_week_sales.update_layout(xaxis=dict(tickangle=45), autosize=True)
+                st.plotly_chart(fig_week_sales)
 
-        tab2.subheader("시간대 유동인구수")
-        tab2.bar_chart(selected_3, x="시간대", y="시간대_유동인구_수")
+            # demo
+            st.subheader("성별 및 연령대별 매출")
+            col1, col2 = st.columns(2)
 
+            with col1:
 
+                gender_data = selected_streamlit_df_3[['상권_코드_명', '점포당_남성_매출_금액', '점포당_여성_매출_금액']]
+                # '성별' 열 추가 및 데이터 재구성
+                gender_data = pd.melt(gender_data, 
+                                    id_vars=['상권_코드_명'], 
+                                    value_vars=['점포당_남성_매출_금액', '점포당_여성_매출_금액'], 
+                                    var_name='성별', 
+                                    value_name='매출_금액')
+                # 파이차트 생성
+                gender_sale = px.pie(gender_data, values='매출_금액', names='성별', title='성별 매출 비율')
 
+                # 레이아웃 수정하여 범례를 왼쪽으로 옮기기
+                gender_sale.update_layout(legend=dict(
+                    x=0,  # x 위치를 0으로 설정하여 왼쪽으로 옮김
+                    y=1.1  # y 위치 조정
+                ))
 
+                # 그래프 출력
+                st.plotly_chart(gender_sale)
+
+            with col2:
+                # 연령별 그래프
+                age_data = selected_streamlit_df_3[['상권_코드_명', 
+                                                    '연령대_10_매출_금액', 
+                                                    '연령대_20_매출_금액', 
+                                                    '연령대_30_매출_금액', 
+                                                    '연령대_40_매출_금액', 
+                                                    '연령대_50_매출_금액', 
+                                                    '연령대_60_이상_매출_금액']]
+                # 데이터 재구성 (열 변환)
+                age_data = age_data.melt(id_vars='상권_코드_명', var_name='연령대', value_name='매출_금액')
+
+                age_sale = px.bar(age_data, x='연령대', y='매출_금액', title='연령대별 매출 금액')
+                st.plotly_chart(age_sale)
+        
+        with tab2:
+            st.subheader("분기별 유동인구 수 추이")
+            fig_quarterly_population = px.line(selected, x='기준_년분기', y='총_유동인구_수')
+            fig_quarterly_population.update_layout(xaxis=dict(tickangle=0), autosize=True, width=1200)
+            st.plotly_chart(fig_quarterly_population)
+
+            # 시간대 및 요일별 매출
+            st.subheader("시간대 및 요일별 매출")
+            col1, col2 = st.columns(2)
+
+            with col1:
+                fig_time_population = px.bar(selected_3, x='시간대', y='시간대_유동인구_수', title='시간대별 유동인구 수')
+                fig_time_population.update_layout(xaxis=dict(tickangle=0), autosize=True)
+                st.plotly_chart(fig_time_population)
+        
     else:
         st.error("해당 상권의 3분기 데이터가 없습니다.", icon="🚨")
         st.write("다른 상권을 선택해주세요")
 
+# 메인 함수
 def main():
-
     quarter_df = load_quarter_data()
     streamlit_df = load_streamlit_data()
-
 
     st.set_page_config(
         page_title="강남구 편의점 매출 예측 서비스",
@@ -211,7 +283,6 @@ def main():
     elif choice == '상권별 분석':
         AnalysisbyCommercialArea_page(streamlit_df, selected_TRDAR_CD_N, quarter_df)
     
-    
-
+# 메인 함수 호출
 if __name__ == '__main__':
     main()
