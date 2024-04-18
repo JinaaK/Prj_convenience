@@ -52,7 +52,8 @@ def commercial_page(streamlit_df):
             tooltip = f"상권명: {row['상권_코드_명']}<br>" \
                     f"매출금액: {row['당월_매출_금액']:,.0f}원<br>" \
                     f"유동인구: {row['총_유동인구_수']:,.0f}명<br>" \
-                    f"총상주인구: {row['총_상주인구_수']:,.0f}명"
+                    f"총상주인구: {row['총_상주인구_수']:,.0f}명<br>"\
+                    f"점포수: {row['유사_업종_점포_수']:,.0f}개<br>"\
 
             folium.CircleMarker(                         # 원 표시
                 location=[row['위도'], row['경도']],      # 원 중심- 위도, 경도
@@ -155,17 +156,17 @@ def AnalysisbyCommercialArea_page(streamlit_df, selected_TRDAR_CD_N, quarter_df)
                 st.plotly_chart(fig_time_sales)
 
             with col2:
-                week_data = selected_streamlit_df_3[['상권_코드_명', 
-                                                    '점포당_월요일_매출액', 
-                                                    '점포당_화요일_매출액', 
-                                                    '점포당_수요일_매출액', 
-                                                    '점포당_목요일_매출액', 
-                                                    '점포당_금요일_매출액',
-                                                    '점포당_토요일_매출액',
-                                                    '점포당_일요일_매출액']]
+                week_sale_data = selected_streamlit_df_3[['상권_코드_명', 
+                                                        '점포당_월요일_매출액', 
+                                                        '점포당_화요일_매출액', 
+                                                        '점포당_수요일_매출액', 
+                                                        '점포당_목요일_매출액', 
+                                                        '점포당_금요일_매출액',
+                                                        '점포당_토요일_매출액',
+                                                        '점포당_일요일_매출액']]
                             
-                # '성별' 열 추가 및 데이터 재구성
-                week_data = pd.melt(week_data, 
+                # 요일 데이터
+                week_sale_data = pd.melt(week_sale_data, 
                                     id_vars=['상권_코드_명'], 
                                     value_vars=['점포당_월요일_매출액', 
                                                 '점포당_화요일_매출액', 
@@ -176,7 +177,7 @@ def AnalysisbyCommercialArea_page(streamlit_df, selected_TRDAR_CD_N, quarter_df)
                                                 '점포당_일요일_매출액'], 
                                     var_name='요일', 
                                     value_name='매출_금액')
-                fig_week_sales = px.bar(week_data, x='요일', y='매출_금액', title='요일별 매출')
+                fig_week_sales = px.bar(week_sale_data, x='요일', y='매출_금액', title='요일별 매출')
                 fig_week_sales.update_layout(xaxis=dict(tickangle=45), autosize=True)
                 st.plotly_chart(fig_week_sales)
 
@@ -227,13 +228,122 @@ def AnalysisbyCommercialArea_page(streamlit_df, selected_TRDAR_CD_N, quarter_df)
             st.plotly_chart(fig_quarterly_population)
 
             # 시간대 및 요일별 매출
-            st.subheader("시간대 및 요일별 매출")
+            st.subheader("시간대 및 요일별 유동인구 수")
             col1, col2 = st.columns(2)
 
             with col1:
                 fig_time_population = px.bar(selected_3, x='시간대', y='시간대_유동인구_수', title='시간대별 유동인구 수')
                 fig_time_population.update_layout(xaxis=dict(tickangle=0), autosize=True)
                 st.plotly_chart(fig_time_population)
+
+            with col2:
+
+                week_floating_population_data = selected_streamlit_df_3[['상권_코드_명', 
+                                                        '월요일_유동인구_수', 
+                                                        '화요일_유동인구_수', 
+                                                        '수요일_유동인구_수', 
+                                                        '목요일_유동인구_수', 
+                                                        '금요일_유동인구_수',
+                                                        '토요일_유동인구_수',
+                                                        '일요일_유동인구_수']]
+                # 요일 데이터
+                week_floating_population_data = pd.melt(week_floating_population_data, 
+                                                        id_vars=['상권_코드_명'], 
+                                                        value_vars=['월요일_유동인구_수', 
+                                                                    '화요일_유동인구_수', 
+                                                                    '수요일_유동인구_수', 
+                                                                    '목요일_유동인구_수', 
+                                                                    '금요일_유동인구_수',
+                                                                    '토요일_유동인구_수',
+                                                                    '일요일_유동인구_수'], 
+                                                        var_name='요일', 
+                                                        value_name='유동인구 수')
+                fig_week_floating = px.bar(week_floating_population_data, x='요일', y='유동인구 수', title='요일별 유동인구 수')
+                fig_week_floating.update_layout(xaxis=dict(tickangle=45), autosize=True)
+                st.plotly_chart(fig_week_floating)
+
+            # demo
+            st.subheader("성별 및 연령대별 유동인구 수")
+            col1, col2 = st.columns(2)
+
+            with col1:
+                gender_floating_data = selected_streamlit_df_3[['상권_코드_명', '남성_유동인구_수', '여성_유동인구_수']]
+                # '성별' 열 추가 및 데이터 재구성
+                gender_floating_data = pd.melt(gender_floating_data, 
+                                    id_vars=['상권_코드_명'], 
+                                    value_vars=['남성_유동인구_수', '여성_유동인구_수'], 
+                                    var_name='성별', 
+                                    value_name='유동인구 수')
+                # 파이차트 생성
+                gender_floating = px.pie(gender_floating_data, values='유동인구 수', names='성별', title='성별 유동인구 비율')
+
+                # 레이아웃 수정하여 범례를 왼쪽으로 옮기기
+                gender_floating.update_layout(legend=dict(
+                    x=0,  # x 위치를 0으로 설정하여 왼쪽으로 옮김
+                    y=1.1  # y 위치 조정
+                ))
+
+                # 그래프 출력
+                st.plotly_chart(gender_floating)
+
+            with col2:
+                # 연령별 그래프
+                age_floating_data = selected_streamlit_df_3[['상권_코드_명', 
+                                                    '연령대_10_유동인구_수', 
+                                                    '연령대_20_유동인구_수', 
+                                                    '연령대_30_유동인구_수', 
+                                                    '연령대_40_유동인구_수', 
+                                                    '연령대_50_유동인구_수', 
+                                                    '연령대_60_이상_유동인구_수']]
+                # 데이터 재구성 (열 변환)
+                age_floating_data = age_floating_data.melt(id_vars='상권_코드_명', var_name='연령대', value_name='유동인구 수')
+
+                age_floating_pop = px.bar(age_floating_data, x='연령대', y='유동인구 수', title='연령대별 유동인구 수')
+                st.plotly_chart(age_floating_pop)
+
+        with tab3:
+            # demo
+            st.subheader("성별 및 연령대별 상주인구 수")
+            st.write(f"총 세대수는 {selected_3['총_가구_수'].iloc[0]:,.0f}세대입니다.")
+            col1, col2 = st.columns(2)
+
+            with col1:
+                gender_resident_data = selected_streamlit_df_3[['상권_코드_명', '남성_상주인구_수', '여성_상주인구_수']]
+                # '성별' 열 추가 및 데이터 재구성
+                gender_resident_data = pd.melt(gender_resident_data, 
+                                    id_vars=['상권_코드_명'], 
+                                    value_vars=['남성_상주인구_수', '여성_상주인구_수'], 
+                                    var_name='성별', 
+                                    value_name='상주인구 수')
+                # 파이차트 생성
+                gender_resident = px.pie(gender_resident_data, values='상주인구 수', names='성별', title='성별 상주인구 비율')
+
+                # 레이아웃 수정하여 범례를 왼쪽으로 옮기기
+                gender_resident.update_layout(legend=dict(
+                    x=0,  # x 위치를 0으로 설정하여 왼쪽으로 옮김
+                    y=1.1  # y 위치 조정
+                ))
+
+                # 그래프 출력
+                st.plotly_chart(gender_resident)
+
+            with col2:
+                # 연령별 그래프
+                age_resident_data = selected_streamlit_df_3[['상권_코드_명', 
+                                                    '연령대_10_상주인구_수', 
+                                                    '연령대_20_상주인구_수', 
+                                                    '연령대_30_상주인구_수', 
+                                                    '연령대_40_상주인구_수', 
+                                                    '연령대_50_상주인구_수', 
+                                                    '연령대_60_이상_상주인구_수']]
+                # 데이터 재구성 (열 변환)
+                age_resident_data = age_resident_data.melt(id_vars='상권_코드_명', var_name='연령대', value_name='상주인구 수')
+
+                age_resident = px.bar(age_resident_data, x='연령대', y='상주인구 수', title='연령대별 상주인구 수')
+                st.plotly_chart(age_resident)
+
+
+            
         
     else:
         st.error("해당 상권의 3분기 데이터가 없습니다.", icon="🚨")
