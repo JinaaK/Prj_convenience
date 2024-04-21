@@ -1,14 +1,10 @@
+# -*- coding:utf-8 -*-
+
 import streamlit as st
 from streamlit_option_menu import option_menu
 import pandas as pd
 import folium
 from streamlit_folium import folium_static
-import geopandas as gpd
-from folium.plugins import MarkerCluster
-from shapely.geometry import Polygon
-from shapely import wkt
-import matplotlib.pyplot as plt
-import altair as alt
 import plotly.express as px
 
 # Streamlit 데이터 로드 함수
@@ -137,7 +133,7 @@ def AnalysisbyCommercialArea_page(streamlit_df, selected_TRDAR_CD_N, quarter_df)
         selected = streamlit_df[streamlit_df['상권_코드_명'] == selected_TRDAR_CD_N]
 
 
-        tab1, tab2, tab3, tab4, tab5 = st.tabs(["📈 매출", "🚉 유동인구", "👨‍👨‍👧‍👦 상주인구", "🛒 집객시설", "🏬 점포수"])
+        tab1, tab2, tab3, tab4 = st.tabs(["📈 매출", "🚉 유동인구", "👨‍👨‍👧‍👦 상주인구", "🏬 점포수"])
 
         with tab1:
             # 분기별 매출 추이
@@ -341,13 +337,28 @@ def AnalysisbyCommercialArea_page(streamlit_df, selected_TRDAR_CD_N, quarter_df)
 
                 age_resident = px.bar(age_resident_data, x='연령대', y='상주인구 수', title='연령대별 상주인구 수')
                 st.plotly_chart(age_resident)
-
-
-            
         
+        with tab4:
+            # 첫 번째 그래프 생성
+            store = px.line(selected, x='기준_년분기', y='유사_업종_점포_수', title='점포수')
+            # 첫 번째 그래프의 Y축 범위 조정
+            store.update_layout(yaxis=dict(range=[0, selected['유사_업종_점포_수'].max() + 10]), autosize=True)
+
+            # 두 번째 그래프 생성
+            store_openclose = px.bar(selected, x='기준_년분기', y=['개업_점포_수', '폐업_점포_수'], barmode='group', title='개·폐업수')
+
+            # 두 번째 그래프를 첫 번째 그래프에 추가
+            for data in store_openclose.data:
+                store.add_trace(data)
+
+            # 그래프 출력
+            st.plotly_chart(store)
+            
     else:
         st.error("해당 상권의 3분기 데이터가 없습니다.", icon="🚨")
         st.write("다른 상권을 선택해주세요")
+
+
 
 # 메인 함수
 def main():
