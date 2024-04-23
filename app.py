@@ -90,7 +90,7 @@ def commercial_page(streamlit_df):
             # 선택된 열의 데이터를 출력
             st.write(streamlit_df[['상권_코드_명', '행정동_코드_명', column_name]]
                         .sort_values(by=column_name, ascending=False)
-                        .reset_index(drop=True), width=800)
+                        .reset_index(drop=True))
 
 # 상권별 분석 페이지 렌더링 함수
 def AnalysisbyCommercialArea_page(streamlit_df, selected_TRDAR_CD_N, quarter_df):
@@ -358,7 +358,108 @@ def AnalysisbyCommercialArea_page(streamlit_df, selected_TRDAR_CD_N, quarter_df)
         st.error("해당 상권의 3분기 데이터가 없습니다.", icon="🚨")
         st.write("다른 상권을 선택해주세요")
 
+def Predict(quarter_df, selected_TRDAR_CD_N):
+    st.markdown("<h2>매출 예측</h2>", unsafe_allow_html=True)
+    st.markdown("<h5>각 항목에 해당하는 값을 입력해주세요</h5>", unsafe_allow_html=True)
 
+    selected_3 = quarter_df.loc[(quarter_df['기준_년'] == 2023) & 
+                                    (quarter_df['기준_분기'] == 3) & 
+                                    (quarter_df['상권_코드_명'] == selected_TRDAR_CD_N), :]
+    
+    with st.container(border=True):
+        col1, col2 = st.columns(2)
+        with col1:
+            st.selectbox("기준 년도", list(range(2023, 2029)))
+        with col2:
+            st.selectbox("기준 분기", list(range(1, 5)))
+
+        hour_ranges = ['00~06', '06~11', '11~14', '14~17', '17~21', '21~24']  # 시간대 범위
+        floating_values = []  # 유동인구 수를 저장할 리스트
+
+        # 각 시간대 범위에 대해 반복문 실행
+        for hour_range in hour_ranges:
+            # 해당 시간대 범위에 대한 유동인구 수 선택 슬라이더 생성
+            floating_value = st.slider(f'{hour_range} 사이의 유동인구 수를 선택해주세요.', 
+                                    round(min(quarter_df['시간대_유동인구_수'])), 
+                                    round(max(quarter_df['시간대_유동인구_수'])), 
+                                    value=int(round(selected_3.loc[selected_3['시간대'] == hour_range, '시간대_유동인구_수'])))
+            # 생성된 슬라이더의 값을 리스트에 추가
+            floating_values.append(floating_value)
+                
+        working_total = st.slider('총 직장인구 수를 선택해주세요.', round(min(quarter_df['총_직장_인구_수'])), 
+                                  round(max(quarter_df['총_직장_인구_수'])),
+                                  value=int(round(selected_3['총_직장_인구_수'].unique()[0])))
+        
+        st.write("각 연령대별 직장인구 비율을 입력하세요.(%)")
+        # 10대부터 60대까지의 연령대 리스트
+        age_groups = [10, 20, 30, 40, 50, 60]
+
+        # 컬럼 리스트
+        columns = st.columns(len(age_groups))
+
+        # 반복문을 사용하여 각 연령대에 대해 직장인구를 입력받음
+        for i, age_group in enumerate(age_groups):
+            with columns[i]:
+                if age_group == 60:
+                    column_name = "연령대_60_이상_직장_인구_비율"
+                    selected_value = selected_3[column_name].unique() * 100
+                    working_value = st.number_input(f"{age_group}대 이상 직장인구", min_value=0.0, max_value=100.0, value=float(selected_value[0]))
+                else:
+                    selected_value = selected_3[f'연령대_{age_group}_직장인구_비율'].unique() * 100
+                    working_value = st.number_input(f"{age_group}대 직장인구", min_value=0.0, max_value=100.0, value=float(selected_value[0]))
+
+
+        living_total = st.slider('총 상주인구 수를 선택해주세요.', round(min(quarter_df['총_상주인구_수'])), 
+                                 round(max(quarter_df['총_상주인구_수'])),
+                                 value=int(round(selected_3['총_상주인구_수'].unique()[0])))
+        
+        st.write("각 연령대별 상주인구 비율을 입력하세요.(%)")
+        # 10대부터 60대까지의 연령대 리스트
+        age_groups = [10, 20, 30, 40, 50, 60]
+
+        # 컬럼 리스트
+        columns = st.columns(len(age_groups))
+
+        # 반복문을 사용하여 각 연령대에 대해 직장인구를 입력받음
+        for i, age_group in enumerate(age_groups):
+            with columns[i]:
+                if age_group == 60:
+                    column_name = "연령대_60_이상_상주인구_비율"
+                    selected_value = selected_3[column_name].unique() * 100
+                    working_value = st.number_input(f"{age_group}대 이상 상주인구", min_value=0.0, max_value=100.0, value=float(selected_value[0]))
+                else:
+                    selected_value = selected_3[f'연령대_{age_group}_상주인구_비율'].unique() * 100
+                    working_value = st.number_input(f"{age_group}대 상주인구", min_value=0.0, max_value=100.0, value=float(selected_value[0]))
+
+        facility = st.slider('집객시설 수를 선택해주세요.', round(min(quarter_df['집객시설_수'])), 
+                             round(max(quarter_df['집객시설_수'])),
+                             value=int(round(selected_3['집객시설_수'].unique()[0])))
+        
+        income = st.slider('월평균 소득금액 선택해주세요.', round(min(quarter_df['월_평균_소득_금액'])), 
+                           round(max(quarter_df['월_평균_소득_금액'])),
+                           value=int(round(selected_3['월_평균_소득_금액'].unique()[0])))
+        
+        spending = st.slider('지출 총 금액을 선택해주세요.', round(min(quarter_df['지출_총금액'])), 
+                             round(max(quarter_df['지출_총금액'])),
+                             value=int(round(selected_3['지출_총금액'].unique()[0])))
+        
+        store = st.slider('편의점 점포 수를 선택해주세요.', round(min(quarter_df['유사_업종_점포_수'])), 
+                          round(max(quarter_df['유사_업종_점포_수'])),
+                          value=int(round(selected_3['유사_업종_점포_수'].unique()[0])))
+        
+        open = st.slider('개업 점포 수를 선택해주세요.', round(min(quarter_df['개업_점포_수'])), 
+                         round(max(quarter_df['개업_점포_수'])),
+                         value=int(round(selected_3['개업_점포_수'].unique()[0])))
+        close = st.slider('폐업 점포 수를 선택해주세요.', round(min(quarter_df['폐업_점포_수'])), 
+                          round(max(quarter_df['폐업_점포_수'])),
+                          value=int(round(selected_3['폐업_점포_수'].unique()[0])))
+
+
+        
+
+        
+        
+      
 
 # 메인 함수
 def main():
@@ -397,12 +498,28 @@ def main():
 
             choice = "상권별 분석"
 
+        elif menu == "매출 예측":
+           # 행정동 선택
+            ADSTRD_CD = quarter_df['행정동_코드_명'].unique()
+            selected_ADSTRD_CD = st.selectbox('행정동', ADSTRD_CD)
+
+            # 선택된 행정동에 해당하는 상권명 가져오기
+            TRDAR_CD_N = quarter_df[quarter_df['행정동_코드_명'] == selected_ADSTRD_CD]['상권_코드_명'].unique()
+
+            # 상권명 선택
+            selected_TRDAR_CD_N = st.selectbox('상권명', TRDAR_CD_N)
+
+            choice = "매출 예측"
+
     # 페이지 보이기
     if choice == '강남구 상권 분석':
         commercial_page(streamlit_df)
 
     elif choice == '상권별 분석':
         AnalysisbyCommercialArea_page(streamlit_df, selected_TRDAR_CD_N, quarter_df)
+
+    elif choice == '매출 예측':
+        Predict(quarter_df, selected_TRDAR_CD_N)
     
 # 메인 함수 호출
 if __name__ == '__main__':
