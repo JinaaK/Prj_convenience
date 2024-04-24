@@ -566,11 +566,11 @@ def Predict(quarter_df, Predict_selected_ADSTRD_CD, Predict_selected_TRDAR_CD_N)
         
         # 예측 결과와 시간대를 함께 출력
         #st.write(prediction_df)
-        st.write(f'{Predict_selected_TRDAR_CD_N} 상권의 {year}년 {quarter}분기 추정 매출액은 {format(int(prediction_df['추정_매출'].sum()), ',')}원입니다.')
+        predict_total_sale = format(int(prediction_df['추정_매출'].sum()), ',')
+        st.write(f'{Predict_selected_TRDAR_CD_N} 상권의 {year}년 {quarter}분기 추정 매출액은 {predict_total_sale}원입니다.')
         predict_time_sales = px.bar(prediction_df, x='시간대', y='추정_매출', title='시간대별 추정 매출')
         predict_time_sales.update_layout(xaxis=dict(tickangle=0), autosize=True)
         st.plotly_chart(predict_time_sales)
-
 
 # 메인 함수
 def main():
