@@ -40,7 +40,7 @@ def commercial_page(streamlit_df):
     # 필요한 데이터만 추출
     streamlit_df = streamlit_df.loc[(streamlit_df['기준_년'] == 2023) & (streamlit_df['기준_분기'] == 3), :]
 
-    col1, col2 = st.columns([1.5,1])
+    col1, col2 = st.columns([3,2])
 
     with col2:
         option_mapping = {
@@ -61,7 +61,8 @@ def commercial_page(streamlit_df):
             # 선택된 열의 데이터를 출력
             st.write(streamlit_df[['상권_코드_명', '행정동_코드_명', column_name]]
                         .sort_values(by=column_name, ascending=False)
-                        .reset_index(drop=True))
+                        .reset_index(drop=True),
+                        use_container_width=True)
 
     with col1: 
         # 지도 생성
@@ -109,7 +110,7 @@ def commercial_page(streamlit_df):
             ).add_to(m)                         # my_map에 값 추가
 
         # Streamlit에 Folium 맵 표시
-        folium_static(m)
+        folium_static(m, width=600)
 
         st.caption('2023년 3분기 기준')
 
@@ -160,7 +161,7 @@ def AnalysisbyCommercialArea_page(streamlit_df, selected_TRDAR_CD_N, quarter_df)
             # 분기별 매출 추이
             st.subheader("분기별 매출 추이")
             fig_quarterly_sales = px.line(selected, x='기준_년분기', y='점포당_매출액')
-            fig_quarterly_sales.update_layout(xaxis=dict(tickangle=0), autosize=True, width=1200)
+            fig_quarterly_sales.update_layout(xaxis=dict(tickangle=0), autosize=True, width=1000)
             fig_quarterly_sales.update_yaxes(title="매출액")
             st.plotly_chart(fig_quarterly_sales)
 
@@ -169,7 +170,7 @@ def AnalysisbyCommercialArea_page(streamlit_df, selected_TRDAR_CD_N, quarter_df)
             col1, col2 = st.columns([1,1])
 
             with col1:
-                fig_time_sales = px.bar(selected_3, x='시간대', y='시간대별_점포당_매출액', title='시간대별 매출', width=600)
+                fig_time_sales = px.bar(selected_3, x='시간대', y='시간대별_점포당_매출액', title='시간대별 매출', width=500)
                 fig_time_sales.update_layout(xaxis=dict(tickangle=0), autosize=True)
                 fig_time_sales.update_yaxes(title_text='매출액')  # y 축 이름 변경
                 st.plotly_chart(fig_time_sales)
@@ -199,7 +200,7 @@ def AnalysisbyCommercialArea_page(streamlit_df, selected_TRDAR_CD_N, quarter_df)
                                         var_name='요일', 
                                         value_name='매출_금액')
 
-                fig_week_sales = px.bar(week_sale_data, x='요일', y='매출_금액', title='요일별 매출', width=600)
+                fig_week_sales = px.bar(week_sale_data, x='요일', y='매출_금액', title='요일별 매출', width=500)
                 fig_week_sales.update_layout(xaxis=dict(tickangle=0), autosize=True)
                 fig_week_sales.update_yaxes(title_text='매출액')  # y 축 이름 변경
                 st.plotly_chart(fig_week_sales)
@@ -218,7 +219,7 @@ def AnalysisbyCommercialArea_page(streamlit_df, selected_TRDAR_CD_N, quarter_df)
                                     var_name='성별', 
                                     value_name='매출_금액')
                 # 파이차트 생성
-                gender_sale = px.pie(gender_data, values='매출_금액', names='성별', title='성별 매출 비율', width=600)
+                gender_sale = px.pie(gender_data, values='매출_금액', names='성별', title='성별 매출 비율', width=500)
 
                 # 레이아웃 수정하여 범례를 왼쪽으로 옮기기
                 gender_sale.update_layout(legend=dict(
@@ -250,7 +251,7 @@ def AnalysisbyCommercialArea_page(streamlit_df, selected_TRDAR_CD_N, quarter_df)
                 # 데이터 재구성 (열 변환)
                 age_data = age_data.melt(id_vars='상권_코드_명', var_name='연령대', value_name='매출_금액')
 
-                age_sale = px.bar(age_data, x='연령대', y='매출_금액', title='연령대별 매출 금액', width=600)
+                age_sale = px.bar(age_data, x='연령대', y='매출_금액', title='연령대별 매출 금액', width=500)
                 age_sale.update_yaxes(title_text='매출액')  # y 축 이름 변경
                 st.plotly_chart(age_sale)
         
@@ -634,6 +635,7 @@ def Predict(quarter_df, Predict_selected_ADSTRD_CD, Predict_selected_TRDAR_CD_N)
         st.write(f'{Predict_selected_TRDAR_CD_N} 상권의 {year}년 {quarter}분기 추정 매출액은 {predict_total_sale}원입니다.')
         predict_time_sales = px.bar(prediction_df, x='시간대', y='추정_매출', title='시간대별 추정 매출')
         predict_time_sales.update_layout(xaxis=dict(tickangle=0), autosize=True)
+        predict_time_sales.update_yaxes(title_text='추정 매출액')
         st.plotly_chart(predict_time_sales)
 
 # 메인 함수
