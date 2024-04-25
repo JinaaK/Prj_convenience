@@ -42,22 +42,60 @@ def commercial_page(streamlit_df):
 
     col1, col2 = st.columns([1.5,1])
 
+    with col2:
+        option_mapping = {
+            '유동인구': '총_유동인구_수',
+            '상주인구': '총_상주인구_수',
+            '매출': '점포당_매출액',
+            '점포수': '유사_업종_점포_수'
+        }
+
+        option = st.selectbox(
+            '원하는 정보를 선택하세요',
+            options=['유동인구', '상주인구', '매출', '점포수'],
+            help= "매출 = 해당 상권 매출 금액 / 점포수"
+            )
+
+        if option in option_mapping:
+            column_name = option_mapping[option]
+            # 선택된 열의 데이터를 출력
+            st.write(streamlit_df[['상권_코드_명', '행정동_코드_명', column_name]]
+                        .sort_values(by=column_name, ascending=False)
+                        .reset_index(drop=True))
+
     with col1: 
         # 지도 생성
         m = folium.Map(location=[37.5172, 127.0473], zoom_start=13)  # 서울 위도, 경도를 중심으로 지도 생성
         
         # 각 점에 대한 정보를 Folium으로 추가
         for idx, row in streamlit_df.iterrows():
+
+            # 툴팁에 표시할 내용 설정
+            if option == '유동인구':
+                radius = row['총_유동인구_수']/100000
+                value = f"{int(row['총_유동인구_수'] / 10000)}만"
+            elif option == '상주인구':
+                radius = row['총_상주인구_수']/200
+                value = f"{int(row['총_상주인구_수']/1000)}천"
+            elif option == '매출':
+                radius = row['점포당_매출액']/10000000
+                value = f"{int(row['점포당_매출액']/1000000)}백만"
+            elif option == '점포수':
+                radius = row['유사_업종_점포_수']
+                value = f"{int(row['유사_업종_점포_수'])}"
+
             # 툴팁에 표시할 내용 설정
             tooltip = f"상권명: {row['상권_코드_명']}<br>" \
                     f"매출금액: {row['당월_매출_금액']:,.0f}원<br>" \
                     f"유동인구: {row['총_유동인구_수']:,.0f}명<br>" \
                     f"총상주인구: {row['총_상주인구_수']:,.0f}명<br>"\
                     f"점포수: {row['유사_업종_점포_수']:,.0f}개<br>"\
+                    
+            
 
             folium.CircleMarker(                         # 원 표시
                 location=[row['위도'], row['경도']],      # 원 중심- 위도, 경도
-                radius=row['유사_업종_점포_수'],          # 원의 반지름
+                radius=radius,          # 원의 반지름
                 color=None,                              # 원의 테두리 색상
                 fill_color='orange',                           # 원을 채움
                 fill_opacity=0.4,                     # 원의 내부를 채울 때의 투명도
@@ -67,34 +105,13 @@ def commercial_page(streamlit_df):
             folium.Marker(                           # 값 표시
                 location=[row['위도'], row['경도']],   # 값 표시 위치- 위도, 경도
                 icon=folium.DivIcon(
-                    html=f"<div style='font-size: 8pt; font-weight: bold;'>{row['유사_업종_점포_수']}</div>"), # 값 표시 방식
+                    html=f"<div style='font-size: 8pt; font-weight: bold; white-space: nowrap;'>{value}</div>"), # 값 표시 방식
             ).add_to(m)                         # my_map에 값 추가
 
         # Streamlit에 Folium 맵 표시
         folium_static(m)
 
         st.caption('2023년 3분기 기준')
-
-    with col2:
-        option = st.selectbox(
-            '원하는 정보를 선택하세요',
-            options=['유동인구', '상주인구', '매출', '점포수'],
-            help= "매출 = 해당 상권 매출 금액 / 점포수"
-        )
-
-        option_mapping = {
-            '유동인구': '총_유동인구_수',
-            '상주인구': '총_상주인구_수',
-            '매출': '점포당_매출액',
-            '점포수': '유사_업종_점포_수'
-        }
-
-        if option in option_mapping:
-            column_name = option_mapping[option]
-            # 선택된 열의 데이터를 출력
-            st.write(streamlit_df[['상권_코드_명', '행정동_코드_명', column_name]]
-                        .sort_values(by=column_name, ascending=False)
-                        .reset_index(drop=True))
 
 # 상권별 분석 페이지 렌더링 함수
 def AnalysisbyCommercialArea_page(streamlit_df, selected_TRDAR_CD_N, quarter_df):
