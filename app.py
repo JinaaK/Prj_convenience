@@ -1,6 +1,7 @@
 # -*- coding:utf-8 -*-
 import streamlit as st
 from streamlit_option_menu import option_menu
+import numpy as np
 import pandas as pd
 import folium
 from streamlit_folium import folium_static
@@ -143,15 +144,17 @@ def AnalysisbyCommercialArea_page(streamlit_df, selected_TRDAR_CD_N, quarter_df)
             st.subheader("분기별 매출 추이")
             fig_quarterly_sales = px.line(selected, x='기준_년분기', y='점포당_매출액')
             fig_quarterly_sales.update_layout(xaxis=dict(tickangle=0), autosize=True, width=1200)
+            fig_quarterly_sales.update_yaxes(title="매출액")
             st.plotly_chart(fig_quarterly_sales)
 
             # 시간대 및 요일별 매출
             st.subheader("시간대 및 요일별 매출")
-            col1, col2 = st.columns(2)
+            col1, col2 = st.columns([1,1])
 
             with col1:
-                fig_time_sales = px.bar(selected_3, x='시간대', y='시간대별_점포당_매출액', title='시간대별 매출')
+                fig_time_sales = px.bar(selected_3, x='시간대', y='시간대별_점포당_매출액', title='시간대별 매출', width=600)
                 fig_time_sales.update_layout(xaxis=dict(tickangle=0), autosize=True)
+                fig_time_sales.update_yaxes(title_text='매출액')  # y 축 이름 변경
                 st.plotly_chart(fig_time_sales)
 
             with col2:
@@ -164,25 +167,29 @@ def AnalysisbyCommercialArea_page(streamlit_df, selected_TRDAR_CD_N, quarter_df)
                                                         '점포당_토요일_매출액',
                                                         '점포당_일요일_매출액']]
                             
+                # 월요일 매출액 컬럼 이름 변경
+                week_sale_data = week_sale_data.rename(columns={'점포당_월요일_매출액': '월요일',
+                                                                '점포당_화요일_매출액': '화요일',
+                                                                '점포당_수요일_매출액': '수요일',
+                                                                '점포당_목요일_매출액': '목요일',
+                                                                '점포당_금요일_매출액': '금요일',
+                                                                '점포당_토요일_매출액': '토요일',
+                                                                '점포당_일요일_매출액': '일요일'})
                 # 요일 데이터
                 week_sale_data = pd.melt(week_sale_data, 
-                                    id_vars=['상권_코드_명'], 
-                                    value_vars=['점포당_월요일_매출액', 
-                                                '점포당_화요일_매출액', 
-                                                '점포당_수요일_매출액', 
-                                                '점포당_목요일_매출액', 
-                                                '점포당_금요일_매출액',
-                                                '점포당_토요일_매출액',
-                                                '점포당_일요일_매출액'], 
-                                    var_name='요일', 
-                                    value_name='매출_금액')
-                fig_week_sales = px.bar(week_sale_data, x='요일', y='매출_금액', title='요일별 매출')
-                fig_week_sales.update_layout(xaxis=dict(tickangle=45), autosize=True)
+                                        id_vars=['상권_코드_명'], 
+                                        value_vars=['월요일', '화요일', '수요일', '목요일', '금요일', '토요일', '일요일'], 
+                                        var_name='요일', 
+                                        value_name='매출_금액')
+
+                fig_week_sales = px.bar(week_sale_data, x='요일', y='매출_금액', title='요일별 매출', width=600)
+                fig_week_sales.update_layout(xaxis=dict(tickangle=0), autosize=True)
+                fig_week_sales.update_yaxes(title_text='매출액')  # y 축 이름 변경
                 st.plotly_chart(fig_week_sales)
 
             # demo
             st.subheader("성별 및 연령대별 매출")
-            col1, col2 = st.columns(2)
+            col1, col2 = st.columns([1,1])
 
             with col1:
 
@@ -194,12 +201,12 @@ def AnalysisbyCommercialArea_page(streamlit_df, selected_TRDAR_CD_N, quarter_df)
                                     var_name='성별', 
                                     value_name='매출_금액')
                 # 파이차트 생성
-                gender_sale = px.pie(gender_data, values='매출_금액', names='성별', title='성별 매출 비율')
+                gender_sale = px.pie(gender_data, values='매출_금액', names='성별', title='성별 매출 비율', width=600)
 
                 # 레이아웃 수정하여 범례를 왼쪽으로 옮기기
                 gender_sale.update_layout(legend=dict(
                     x=0,  # x 위치를 0으로 설정하여 왼쪽으로 옮김
-                    y=1.1  # y 위치 조정
+                    y=1.1  # y 위치 조정           
                 ))
 
                 # 그래프 출력
@@ -214,16 +221,27 @@ def AnalysisbyCommercialArea_page(streamlit_df, selected_TRDAR_CD_N, quarter_df)
                                                     '연령대_40_매출_금액', 
                                                     '연령대_50_매출_금액', 
                                                     '연령대_60_이상_매출_금액']]
+                
+                # 연령대 컬럼 이름 변경
+                age_data = age_data.rename(columns={'연령대_10_매출_금액': '10대',
+                                                    '연령대_20_매출_금액': '20대',
+                                                    '연령대_30_매출_금액': '30대',
+                                                    '연령대_40_매출_금액': '40대',
+                                                    '연령대_50_매출_금액': '50대',
+                                                    '연령대_60_이상_매출_금액': '60대 이상'})
+                
                 # 데이터 재구성 (열 변환)
                 age_data = age_data.melt(id_vars='상권_코드_명', var_name='연령대', value_name='매출_금액')
 
-                age_sale = px.bar(age_data, x='연령대', y='매출_금액', title='연령대별 매출 금액')
+                age_sale = px.bar(age_data, x='연령대', y='매출_금액', title='연령대별 매출 금액', width=600)
+                age_sale.update_yaxes(title_text='매출액')  # y 축 이름 변경
                 st.plotly_chart(age_sale)
         
         with tab2:
             st.subheader("분기별 유동인구 수 추이")
             fig_quarterly_population = px.line(selected, x='기준_년분기', y='총_유동인구_수')
             fig_quarterly_population.update_layout(xaxis=dict(tickangle=0), autosize=True, width=1200)
+            fig_quarterly_population.update_yaxes(title_text='총 유동인구 수')  # y 축 이름 변경
             st.plotly_chart(fig_quarterly_population)
 
             # 시간대 및 요일별 매출
@@ -231,8 +249,9 @@ def AnalysisbyCommercialArea_page(streamlit_df, selected_TRDAR_CD_N, quarter_df)
             col1, col2 = st.columns(2)
 
             with col1:
-                fig_time_population = px.bar(selected_3, x='시간대', y='시간대_유동인구_수', title='시간대별 유동인구 수')
+                fig_time_population = px.bar(selected_3, x='시간대', y='시간대_유동인구_수', title='시간대별 유동인구 수', width=600)
                 fig_time_population.update_layout(xaxis=dict(tickangle=0), autosize=True)
+                fig_time_population.update_yaxes(title_text='유동인구 수')  # y 축 이름 변경
                 st.plotly_chart(fig_time_population)
 
             with col2:
@@ -245,20 +264,30 @@ def AnalysisbyCommercialArea_page(streamlit_df, selected_TRDAR_CD_N, quarter_df)
                                                         '금요일_유동인구_수',
                                                         '토요일_유동인구_수',
                                                         '일요일_유동인구_수']]
+                
+                # 월요일 매출액 컬럼 이름 변경
+                week_floating_population_data = week_floating_population_data.rename(columns={'월요일_유동인구_수': '월요일',
+                                                                                            '화요일_유동인구_수': '화요일',
+                                                                                            '수요일_유동인구_수': '수요일',
+                                                                                            '목요일_유동인구_수': '목요일',
+                                                                                            '금요일_유동인구_수': '금요일',
+                                                                                            '토요일_유동인구_수': '토요일',
+                                                                                            '일요일_유동인구_수': '일요일'})
+                
                 # 요일 데이터
                 week_floating_population_data = pd.melt(week_floating_population_data, 
                                                         id_vars=['상권_코드_명'], 
-                                                        value_vars=['월요일_유동인구_수', 
-                                                                    '화요일_유동인구_수', 
-                                                                    '수요일_유동인구_수', 
-                                                                    '목요일_유동인구_수', 
-                                                                    '금요일_유동인구_수',
-                                                                    '토요일_유동인구_수',
-                                                                    '일요일_유동인구_수'], 
+                                                        value_vars=['월요일', 
+                                                                    '화요일', 
+                                                                    '수요일', 
+                                                                    '목요일', 
+                                                                    '금요일',
+                                                                    '토요일',
+                                                                    '일요일'], 
                                                         var_name='요일', 
                                                         value_name='유동인구 수')
-                fig_week_floating = px.bar(week_floating_population_data, x='요일', y='유동인구 수', title='요일별 유동인구 수')
-                fig_week_floating.update_layout(xaxis=dict(tickangle=45), autosize=True)
+                fig_week_floating = px.bar(week_floating_population_data, x='요일', y='유동인구 수', title='요일별 유동인구 수', width=600)
+                fig_week_floating.update_layout(xaxis=dict(tickangle=0), autosize=True)
                 st.plotly_chart(fig_week_floating)
 
             # demo
@@ -274,7 +303,7 @@ def AnalysisbyCommercialArea_page(streamlit_df, selected_TRDAR_CD_N, quarter_df)
                                     var_name='성별', 
                                     value_name='유동인구 수')
                 # 파이차트 생성
-                gender_floating = px.pie(gender_floating_data, values='유동인구 수', names='성별', title='성별 유동인구 비율')
+                gender_floating = px.pie(gender_floating_data, values='유동인구 수', names='성별', title='성별 유동인구 비율', width=600)
 
                 # 레이아웃 수정하여 범례를 왼쪽으로 옮기기
                 gender_floating.update_layout(legend=dict(
@@ -294,10 +323,19 @@ def AnalysisbyCommercialArea_page(streamlit_df, selected_TRDAR_CD_N, quarter_df)
                                                     '연령대_40_유동인구_수', 
                                                     '연령대_50_유동인구_수', 
                                                     '연령대_60_이상_유동인구_수']]
+                
+                # 연령대 컬럼 이름 변경
+                age_floating_data = age_floating_data.rename(columns={'연령대_10_유동인구_수': '10대',
+                                                                '연령대_20_유동인구_수': '20대',
+                                                                '연령대_30_유동인구_수': '30대',
+                                                                '연령대_40_유동인구_수': '40대',
+                                                                '연령대_50_유동인구_수': '50대',
+                                                                '연령대_60_이상_유동인구_수': '60대 이상'})
+
                 # 데이터 재구성 (열 변환)
                 age_floating_data = age_floating_data.melt(id_vars='상권_코드_명', var_name='연령대', value_name='유동인구 수')
 
-                age_floating_pop = px.bar(age_floating_data, x='연령대', y='유동인구 수', title='연령대별 유동인구 수')
+                age_floating_pop = px.bar(age_floating_data, x='연령대', y='유동인구 수', title='연령대별 유동인구 수', width=600)
                 st.plotly_chart(age_floating_pop)
 
         with tab3:
@@ -315,7 +353,7 @@ def AnalysisbyCommercialArea_page(streamlit_df, selected_TRDAR_CD_N, quarter_df)
                                     var_name='성별', 
                                     value_name='상주인구 수')
                 # 파이차트 생성
-                gender_resident = px.pie(gender_resident_data, values='상주인구 수', names='성별', title='성별 상주인구 비율')
+                gender_resident = px.pie(gender_resident_data, values='상주인구 수', names='성별', title='성별 상주인구 비율', width=600)
 
                 # 레이아웃 수정하여 범례를 왼쪽으로 옮기기
                 gender_resident.update_layout(legend=dict(
@@ -335,20 +373,29 @@ def AnalysisbyCommercialArea_page(streamlit_df, selected_TRDAR_CD_N, quarter_df)
                                                     '연령대_40_상주인구_수', 
                                                     '연령대_50_상주인구_수', 
                                                     '연령대_60_이상_상주인구_수']]
+                
+                # 연령대 컬럼 이름 변경
+                age_resident_data = age_resident_data.rename(columns={'연령대_10_상주인구_수': '10대',
+                                                                '연령대_20_상주인구_수': '20대',
+                                                                '연령대_30_상주인구_수': '30대',
+                                                                '연령대_40_상주인구_수': '40대',
+                                                                '연령대_50_상주인구_수': '50대',
+                                                                '연령대_60_이상_상주인구_수': '60대 이상'})
+
                 # 데이터 재구성 (열 변환)
                 age_resident_data = age_resident_data.melt(id_vars='상권_코드_명', var_name='연령대', value_name='상주인구 수')
 
-                age_resident = px.bar(age_resident_data, x='연령대', y='상주인구 수', title='연령대별 상주인구 수')
+                age_resident = px.bar(age_resident_data, x='연령대', y='상주인구 수', title='연령대별 상주인구 수', width=600)
                 st.plotly_chart(age_resident)
         
         with tab4:
             # 첫 번째 그래프 생성
-            store = px.line(selected, x='기준_년분기', y='유사_업종_점포_수', title='점포수')
+            store = px.line(selected, x='기준_년분기', y='유사_업종_점포_수', title='점포수', width=1200)
             # 첫 번째 그래프의 Y축 범위 조정
             store.update_layout(yaxis=dict(range=[0, selected['유사_업종_점포_수'].max() + 10]), autosize=True)
 
             # 두 번째 그래프 생성
-            store_openclose = px.bar(selected, x='기준_년분기', y=['개업_점포_수', '폐업_점포_수'], barmode='group', title='개·폐업수')
+            store_openclose = px.bar(selected, x='기준_년분기', y=['개업_점포_수', '폐업_점포_수'], barmode='group', title='개·폐업수', width=1200)
 
             # 두 번째 그래프를 첫 번째 그래프에 추가
             for data in store_openclose.data:
