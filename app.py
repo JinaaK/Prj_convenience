@@ -543,6 +543,13 @@ def Predict(quarter_df, Predict_selected_ADSTRD_CD, Predict_selected_TRDAR_CD_N)
         open = st.slider('개업 점포 수를 선택해주세요.', round(min(quarter_df['개업_점포_수'])), 
                          round(max(quarter_df['개업_점포_수'])),
                          value=int(round(selected_3['개업_점포_수'].unique()[0])))
+        
+        close = st.slider('폐업 점포 수를 선택해주세요.', round(min(quarter_df['폐업_점포_수'])), 
+                         round(max(quarter_df['폐업_점포_수'])),
+                         value=int(round(selected_3['폐업_점포_수'].unique()[0])))
+        
+        
+
 
     # 사용자 입력값을 딕셔너리로 변환
     user_data = {
@@ -555,6 +562,7 @@ def Predict(quarter_df, Predict_selected_ADSTRD_CD, Predict_selected_TRDAR_CD_N)
         '연령대_30_직장인구_비율': [working_population_ratios[2]] * 6,
         '연령대_40_직장인구_비율': [working_population_ratios[3]] * 6,
         '연령대_50_직장인구_비율': [working_population_ratios[4]] * 6,
+        '연령대_60_이상_직장인구_비율': [working_population_ratios[4]] * 6,
         '총_상주인구_수': [living_total] * 6,
         '연령대_10_상주인구_비율': [living_ratios[0]] * 6,
         '연령대_20_상주인구_비율': [living_ratios[1]] * 6,
@@ -564,8 +572,11 @@ def Predict(quarter_df, Predict_selected_ADSTRD_CD, Predict_selected_TRDAR_CD_N)
         '연령대_60_이상_상주인구_비율': [living_ratios[5]] * 6,
         '총_가구_수': [house] * 6,
         '월_평균_소득_금액': [income] * 6,
+        '지출_총금액' : [spending] * 6,
+        '집객시설_수' : [facility] * 6,
         '유사_업종_점포_수': [store] * 6,
-        '개업_점포_수': [open] * 6
+        '개업_점포_수': [open] * 6,
+        '폐업_점포_수' : [close] * 6
     }
     user_data = pd.DataFrame(user_data)
     user_data['편의점_밀도'] = user_data['유사_업종_점포_수']/selected_3['영역_면적'].unique()
@@ -603,7 +614,7 @@ def Predict(quarter_df, Predict_selected_ADSTRD_CD, Predict_selected_TRDAR_CD_N)
 
     if st.button('예측하기'):
         # 모델과 lambda 값을 로드
-        model, lambda_ = joblib.load("model/best_lgbm_regression_bystore_model.pkl")
+        model, lambda_ = joblib.load("model/best_lgbm_regression_model.pkl")
         # 범주형 변수와 숫자형 변수 구분
         cat_cols = ['시간대', '상권_구분_코드_명', '상권_코드_명', '행정동_코드_명']
         num_cols = user_data.columns.difference(cat_cols).tolist()
@@ -628,10 +639,15 @@ def Predict(quarter_df, Predict_selected_ADSTRD_CD, Predict_selected_TRDAR_CD_N)
 
         # 시간대 컬럼 추가
         prediction_df['시간대'] = ['00~06', '06~11', '11~14', '14~17', '17~21', '21~24']
-        
+
+        # prediction_df에 유사_업종_점포_수 컬럼 추가
+        prediction_df['유사_업종_점포_수'] = [store] * 6
+
+        # 매장 평균 매출 금액
+        prediction_df['매장별 평균 추정 매출'] = prediction_df['추정_매출']/prediction_df['유사_업종_점포_수']
+
         # 예측 결과와 시간대를 함께 출력
-        #st.write(prediction_df)
-        predict_total_sale = format(int(prediction_df['추정_매출'].sum()), ',')
+        predict_total_sale = format(int(prediction_df['매장별 평균 추정 매출'].sum()), ',')
         st.write(f'{Predict_selected_TRDAR_CD_N} 상권의 {year}년 {quarter}분기 추정 매출액은 {predict_total_sale}원입니다.')
         predict_time_sales = px.bar(prediction_df, x='시간대', y='추정_매출', title='시간대별 추정 매출')
         predict_time_sales.update_layout(xaxis=dict(tickangle=0), autosize=True)
