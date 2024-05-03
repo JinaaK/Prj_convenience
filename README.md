@@ -12,7 +12,7 @@
 
 # 발표자료 PDF
 - 발표자료 PDF는 아래와 같습니다.
-  + [강남구 편의점 매출 예측 서비스.pdf](Portfolio_convenience insights.pdf)
+  + [강남구 편의점 매출 예측 서비스.pdf](Portfolio.pdf)
 
 # License
 `This project is licensed under the terms of the MIT license.`
